@@ -67,6 +67,16 @@ export default async function InterviewDetailPage({
             <p className="text-sm text-gray-500 mt-1">
               {interview.candidates.email}
             </p>
+            {interview.recording_url && (
+              <a
+                href={interview.recording_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 mt-2 text-sm text-brand-600 hover:text-brand-700 font-medium"
+              >
+                ▶ Watch Recording
+              </a>
+            )}
           </div>
           {rec && (
             <span className={`px-4 py-2 rounded-lg font-semibold ${rec.color}`}>
