@@ -4,14 +4,12 @@ import { createServiceClient } from '@/lib/supabase/server';
 /**
  * Tavus webhook handler.
  *
- * Based on Tavus official docs, events delivered to callback_url:
- * - system.replica_joined        (call started)
- * - system.shutdown              (call ended, with shutdown_reason)
+ * Events delivered to callback_url:
+ * - system.replica_joined
+ * - system.shutdown
  * - application.transcription_ready  (full transcript array)
- * - application.recording_ready      (recording URL)
- * - application.perception_analysis  (visual analysis, if enabled)
- *
- * Transcript format: array of { role: "system"|"user"|"assistant", content: string }
+ * - application.recording_ready      (with storage_uri / bucket_name / s3_key)
+ * - application.recording_copy_failed (delivery to bucket failed)
  */
 export async function POST(req: NextRequest) {
   let body: any;
@@ -22,7 +20,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Log everything for debugging
   console.log('[Tavus webhook] Received event:', JSON.stringify(body, null, 2));
 
   const supabase = createServiceClient();
@@ -46,24 +43,18 @@ export async function POST(req: NextRequest) {
   }
 
   const eventType = body.event_type || body.type || '';
-  const messageType = body.message_type || '';
   console.log(`[Tavus webhook] Event: ${eventType}, Interview: ${interview.id}`);
 
   // ============================================
-  // Handle transcription_ready (the main event we care about)
+  // Transcript
   // ============================================
   if (eventType === 'application.transcription_ready' || eventType.includes('transcription_ready')) {
     const transcript = body.properties?.transcript || body.transcript;
-
     if (Array.isArray(transcript)) {
       console.log(`[Tavus webhook] Transcript has ${transcript.length} turns`);
 
-      // Clear any existing turns for this interview
       await supabase.from('transcript_turns').delete().eq('interview_id', interview.id);
 
-      // Map Tavus roles to our schema
-      // Tavus: "system" | "user" | "assistant"  →  Our: "ai" | "candidate"
-      // Skip "system" turns (those are just the system prompt)
       const turns = transcript
         .filter((t: any) => t.role !== 'system')
         .map((t: any) => ({
@@ -74,45 +65,62 @@ export async function POST(req: NextRequest) {
         .filter((t: any) => t.content.trim().length > 0);
 
       if (turns.length > 0) {
-        const { error: insertErr } = await supabase
-          .from('transcript_turns')
-          .insert(turns);
-        if (insertErr) {
-          console.error('[Tavus webhook] Failed to insert turns:', insertErr);
-        } else {
-          console.log(`[Tavus webhook] Inserted ${turns.length} transcript turns`);
-        }
+        const { error: insertErr } = await supabase.from('transcript_turns').insert(turns);
+        if (insertErr) console.error('[Tavus webhook] Failed to insert turns:', insertErr);
+        else console.log(`[Tavus webhook] Inserted ${turns.length} transcript turns`);
       }
 
-      // Trigger report generation now that we have the transcript
       triggerReportGeneration(interview.id);
     }
   }
 
   // ============================================
-  // Handle recording_ready (save URL for playback)
+  // Recording — save S3 location
   // ============================================
   if (eventType === 'application.recording_ready' || eventType.includes('recording_ready')) {
-    const recordingUrl =
-      body.properties?.recording_url ||
-      body.properties?.url ||
-      body.recording_url;
+    const props = body.properties || {};
+    const bucketName = props.bucket_name;
+    const s3Key = props.s3_key;
+    const duration = props.duration;
+    const storageUri = props.storage_uri;
 
-    if (recordingUrl) {
-      console.log(`[Tavus webhook] Recording ready: ${recordingUrl}`);
-      await supabase
+    console.log(`[Tavus webhook] Recording ready. bucket=${bucketName}, key=${s3Key}, duration=${duration}`);
+
+    if (s3Key) {
+      const update: any = {
+        recording_s3_bucket: bucketName,
+        recording_s3_key: s3Key,
+        recording_duration_seconds: duration
+      };
+      // Store storage_uri for reference if present
+      if (storageUri) {
+        update.recording_url = storageUri; // legacy display field
+      }
+
+      const { error: updateErr } = await supabase
         .from('interviews')
-        .update({ recording_url: recordingUrl })
+        .update(update)
         .eq('id', interview.id);
+
+      if (updateErr) console.error('[Tavus webhook] Failed to save recording info:', updateErr);
     }
   }
 
   // ============================================
-  // Handle conversation end
+  // Recording copy failed (S3 trust issue, etc.)
+  // ============================================
+  if (eventType === 'application.recording_copy_failed' || eventType.includes('recording_copy_failed')) {
+    const errorCode = body.properties?.error_code;
+    const errorMessage = body.properties?.error_message;
+    console.error(`[Tavus webhook] Recording delivery FAILED: ${errorCode} - ${errorMessage}`);
+    // Note: Tavus retains the recording for ~30 days for manual recovery
+  }
+
+  // ============================================
+  // Conversation end
   // ============================================
   if (eventType === 'system.shutdown' || eventType.includes('shutdown')) {
     console.log(`[Tavus webhook] Conversation ended. Reason: ${body.properties?.shutdown_reason}`);
-
     if (interview.status !== 'completed') {
       await supabase
         .from('interviews')
@@ -122,8 +130,6 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', interview.id);
     }
-    // Note: Don't trigger report here - wait for transcription_ready
-    // Tavus sends transcription_ready AFTER shutdown
   }
 
   return NextResponse.json({ ok: true });

@@ -18,33 +18,21 @@ export default async function AdminLayout({
       <aside className="w-64 bg-white border-r flex flex-col">
         <div className="p-6 border-b">
           <Link href="/admin" className="text-lg font-bold text-gray-900">
-            AI Interviewer
+            TalentGauge
           </Link>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
-          <Link
-            href="/admin"
-            className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
-          >
+          <Link href="/admin" className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
             Dashboard
           </Link>
-          <Link
-            href="/admin/jobs"
-            className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
-          >
+          <Link href="/admin/jobs" className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
             Jobs
           </Link>
-          <Link
-            href="/admin/interviews"
-            className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
-          >
+          <Link href="/admin/interviews" className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
             Interviews
           </Link>
-          <Link
-            href="/admin/candidates"
-            className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
-          >
+          <Link href="/admin/candidates" className="block px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
             Candidates
           </Link>
         </nav>

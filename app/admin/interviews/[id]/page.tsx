@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { Play } from 'lucide-react';
 
 const REC_LABELS: Record<string, { label: string; color: string }> = {
   strong_yes: { label: 'Strong Yes', color: 'bg-green-600 text-white' },
@@ -41,18 +42,13 @@ export default async function InterviewDetailPage({
     .eq('interview_id', params.id)
     .order('created_at', { ascending: true });
 
-  const rec = report?.recommendation
-    ? REC_LABELS[report.recommendation]
-    : null;
+  const rec = report?.recommendation ? REC_LABELS[report.recommendation] : null;
+  const hasRecording = !!interview.recording_s3_key;
 
   return (
     <div className="p-8 max-w-5xl">
-      {/* Header */}
       <div className="mb-6">
-        <Link
-          href="/admin/interviews"
-          className="text-sm text-gray-500 hover:text-gray-700"
-        >
+        <Link href="/admin/interviews" className="text-sm text-gray-500 hover:text-gray-700">
           ← All interviews
         </Link>
         <div className="flex justify-between items-start mt-2">
@@ -67,15 +63,18 @@ export default async function InterviewDetailPage({
             <p className="text-sm text-gray-500 mt-1">
               {interview.candidates.email}
             </p>
-            {interview.recording_url && (
-              <a
-                href={interview.recording_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 mt-2 text-sm text-brand-600 hover:text-brand-700 font-medium"
+            {hasRecording && (
+              <Link
+                href={`/admin/interviews/${params.id}/recording`}
+                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800"
               >
-                ▶ Watch Recording
-              </a>
+                <Play size={14} /> Watch Recording
+                {interview.recording_duration_seconds && (
+                  <span className="text-gray-300">
+                    ({Math.floor(interview.recording_duration_seconds / 60)} min)
+                  </span>
+                )}
+              </Link>
             )}
           </div>
           {rec && (
@@ -88,7 +87,6 @@ export default async function InterviewDetailPage({
 
       {report ? (
         <>
-          {/* Score Overview */}
           <section className="bg-white rounded-xl border p-6 mb-6">
             <div className="flex items-center gap-8">
               <div>
@@ -122,13 +120,11 @@ export default async function InterviewDetailPage({
             </div>
           </section>
 
-          {/* Summary */}
           <section className="bg-white rounded-xl border p-6 mb-6">
             <h2 className="font-semibold text-gray-900 mb-3">Summary</h2>
             <p className="text-gray-700">{report.summary}</p>
           </section>
 
-          {/* Strengths & Concerns */}
           <div className="grid grid-cols-2 gap-6 mb-6">
             <section className="bg-white rounded-xl border p-6">
               <h2 className="font-semibold text-green-700 mb-3">Strengths</h2>
@@ -160,13 +156,11 @@ export default async function InterviewDetailPage({
         </div>
       ) : (
         <div className="bg-gray-50 border p-4 rounded-lg mb-6 text-sm text-gray-600">
-          Interview status:{' '}
-          <strong>{interview.status.replace('_', ' ')}</strong>. Report will appear
-          here when complete.
+          Interview status: <strong>{interview.status.replace('_', ' ')}</strong>.
+          Report will appear here when complete.
         </div>
       )}
 
-      {/* Transcript */}
       {transcript && transcript.length > 0 && (
         <section className="bg-white rounded-xl border">
           <div className="p-6 border-b">
@@ -176,22 +170,16 @@ export default async function InterviewDetailPage({
             {transcript.map((turn: any) => (
               <div
                 key={turn.id}
-                className={`flex gap-3 ${
-                  turn.speaker === 'ai' ? '' : 'flex-row-reverse'
-                }`}
+                className={`flex gap-3 ${turn.speaker === 'ai' ? '' : 'flex-row-reverse'}`}
               >
                 <div
                   className={`text-xs font-medium px-2 py-1 rounded h-fit ${
-                    turn.speaker === 'ai'
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'bg-gray-100 text-gray-700'
+                    turn.speaker === 'ai' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
                   }`}
                 >
                   {turn.speaker === 'ai' ? 'AI' : 'Candidate'}
                 </div>
-                <div className="flex-1 text-sm text-gray-700">
-                  {turn.content}
-                </div>
+                <div className="flex-1 text-sm text-gray-700">{turn.content}</div>
               </div>
             ))}
           </div>

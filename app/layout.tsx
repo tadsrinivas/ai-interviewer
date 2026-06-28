@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'AI Interviewer',
+  title: 'TalentGauge',
   description: 'AI-powered candidate screening for staffing companies'
 };
 

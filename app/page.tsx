@@ -5,7 +5,7 @@ export default function HomePage() {
     <div className="min-h-screen flex flex-col">
       <header className="border-b bg-white">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-900">AI Interviewer</h1>
+          <h1 className="text-xl font-bold text-gray-900">TalentGauge</h1>
           <Link
             href="/login"
             className="text-sm font-medium text-brand-600 hover:text-brand-700"
@@ -37,7 +37,7 @@ export default function HomePage() {
 
       <footer className="border-t bg-white py-4">
         <div className="max-w-6xl mx-auto px-6 text-sm text-gray-500 text-center">
-          © {new Date().getFullYear()} AI Interviewer
+          © {new Date().getFullYear()} TalentGauge
         </div>
       </footer>
     </div>
